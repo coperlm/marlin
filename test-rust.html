@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>真正的Rust调用测试</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="rust-marlin-client.js"></script>
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-8">
+        <div class="max-w-4xl mx-auto">
+            <h1 class="text-3xl font-bold text-center mb-8">🦀 真正的Rust底层调用测试</h1>
+            
+            <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-6">
+                <strong>✅ 现在直接调用本地Rust程序！</strong>
+                <p class="text-sm mt-1">每次点击都会执行真实的marlin_demo.exe</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h2 class="text-xl font-semibold mb-4">正确约束测试</h2>
+                    <p class="text-gray-600 mb-4">3 × 5 = 15 (应该验证通过)</p>
+                    <button onclick="testCorrectConstraint()" 
+                            class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">
+                        测试正确约束
+                    </button>
+                </div>
+
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h2 class="text-xl font-semibold mb-4">错误约束测试</h2>
+                    <p class="text-gray-600 mb-4">3 × 5 = 16 (应该验证失败)</p>
+                    <button onclick="testIncorrectConstraint()" 
+                            class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded">
+                        测试错误约束
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h2 class="text-xl font-semibold mb-4">🔍 执行日志</h2>
+                <div id="logs" class="bg-gray-900 text-green-400 p-4 rounded font-mono text-sm h-96 overflow-y-auto">
+                    <div>等待测试...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let client = null;
+        
+        async function initClient() {
+            if (!client) {
+                client = new RustMarlinClient();
+                try {
+                    await client.checkServerHealth();
+                    log('✅ 连接到Rust桥接服务器成功');
+                } catch (error) {
+                    log('❌ 无法连接到服务器: ' + error.message);
+                    log('请确保运行: npm start');
+                }
+            }
+            return client;
+        }
+
+        async function testCorrectConstraint() {
+            const client = await initClient();
+            log('🧪 开始测试正确约束: 3 × 5 = 15');
+            
+            try {
+                const result = await client.fullDemo(3, 5, 15);
+                log('📊 Rust程序返回结果:');
+                log(JSON.stringify(result, null, 2));
+                
+                if (result.proof_verification) {
+                    log('✅ 测试通过！约束验证成功');
+                } else {
+                    log('❌ 意外结果：正确约束验证失败');
+                }
+            } catch (error) {
+                log('❌ 测试失败: ' + error.message);
+            }
+        }
+
+        async function testIncorrectConstraint() {
+            const client = await initClient();
+            log('🧪 开始测试错误约束: 3 × 5 = 16');
+            
+            try {
+                const result = await client.fullDemo(3, 5, 16);
+                log('📊 Rust程序返回结果:');
+                log(JSON.stringify(result, null, 2));
+                
+                if (!result.proof_verification) {
+                    log('✅ 测试通过！错误约束被正确检测');
+                    if (result.raw_output && result.raw_output.includes('PC::Check failed')) {
+                        log('✅ 确认：Rust程序返回了PC::Check failed');
+                    }
+                } else {
+                    log('❌ 意外结果：错误约束未被检测');
+                }
+            } catch (error) {
+                log('❌ 测试失败: ' + error.message);
+            }
+        }
+
+        function log(message) {
+            const logsDiv = document.getElementById('logs');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.innerHTML = `[${timestamp}] ${message}`;
+            logsDiv.appendChild(logEntry);
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+        }
+
+        // 初始化时检查服务器状态
+        window.addEventListener('load', initClient);
+    </script>
+</body>
+</html>

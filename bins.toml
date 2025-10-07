@@ -1,0 +1,7 @@
+[[bin]]
+name = "constraint_tester"
+path = "src/constraint_tester.rs"
+
+[[bin]]
+name = "marlin_demo"
+path = "src/demo_cli.rs"

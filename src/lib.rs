@@ -60,6 +60,9 @@ use ahp::EvaluationsProvider;
 #[cfg(test)]
 mod test;
 
+#[cfg(feature = "wasm")]
+pub mod wasm;
+
 /// The compiled argument system.
 pub struct Marlin<F: PrimeField, PC: PolynomialCommitment<F, DensePolynomial<F>>, FS: FiatShamirRng>(
     #[doc(hidden)] PhantomData<F>,

@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>真实约束验证 - Marlin zkSNARK</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+</head>
+<body class="bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 min-h-screen text-white">
+    <div class="container mx-auto px-6 py-8" x-data="constraintTester()">
+        
+        <!-- 标题 -->
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold mb-4 bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent">
+                🔒 真实约束验证系统
+            </h1>
+            <p class="text-lg text-gray-300">
+                基于真实的Rust Marlin zkSNARK实现 - 每次测试都运行完整的密码学证明！
+            </p>
+            <div class="mt-2 inline-flex items-center px-4 py-2 bg-green-800/30 text-green-300 rounded-full text-sm">
+                <span class="w-3 h-3 bg-green-400 rounded-full mr-2 animate-pulse"></span>
+                真实Rust程序运行中
+            </div>
+        </div>
+
+        <!-- 约束输入区域 -->
+        <div class="max-w-2xl mx-auto mb-8">
+            <div class="bg-white/10 backdrop-blur rounded-xl p-6 border border-white/20">
+                <h2 class="text-2xl font-semibold mb-4 text-center">🧮 约束测试</h2>
+                <p class="text-gray-300 text-center mb-6">
+                    输入三个数字来测试乘法约束：a × b = c
+                </p>
+                
+                <div class="grid grid-cols-5 gap-4 items-center mb-6">
+                    <div class="text-center">
+                        <label class="block text-sm font-medium mb-2">a</label>
+                        <input type="number" 
+                               x-model="inputs.a" 
+                               class="w-full px-3 py-2 bg-white/10 border border-white/30 rounded-lg text-white text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                               :disabled="isLoading">
+                    </div>
+                    <div class="text-center text-2xl font-bold">×</div>
+                    <div class="text-center">
+                        <label class="block text-sm font-medium mb-2">b</label>
+                        <input type="number" 
+                               x-model="inputs.b" 
+                               class="w-full px-3 py-2 bg-white/10 border border-white/30 rounded-lg text-white text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                               :disabled="isLoading">
+                    </div>
+                    <div class="text-center text-2xl font-bold">=</div>
+                    <div class="text-center">
+                        <label class="block text-sm font-medium mb-2">c</label>
+                        <input type="number" 
+                               x-model="inputs.c" 
+                               class="w-full px-3 py-2 bg-white/10 border border-white/30 rounded-lg text-white text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                               :disabled="isLoading">
+                    </div>
+                </div>
+
+                <!-- 预设约束按钮 -->
+                <div class="flex flex-wrap gap-2 justify-center mb-6">
+                    <button @click="setConstraint(3, 5, 15)" 
+                            class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg text-sm transition-colors">
+                        ✅ 正确: 3×5=15
+                    </button>
+                    <button @click="setConstraint(3, 5, 16)" 
+                            class="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-sm transition-colors">
+                        ❌ 错误: 3×5=16
+                    </button>
+                    <button @click="setConstraint(7, 8, 56)" 
+                            class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg text-sm transition-colors">
+                        ✅ 正确: 7×8=56
+                    </button>
+                    <button @click="setConstraint(7, 8, 42)" 
+                            class="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-sm transition-colors">
+                        ❌ 错误: 7×8=42
+                    </button>
+                </div>
+
+                <!-- 测试按钮 -->
+                <div class="flex gap-4 justify-center">
+                    <button @click="runConstraintTest()" 
+                            :disabled="isLoading"
+                            class="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-semibold transition-colors flex items-center gap-2">
+                        <span x-show="!isLoading">🔒 运行完整zkSNARK测试</span>
+                        <span x-show="isLoading" class="flex items-center gap-2">
+                            <div class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                            正在运行密码学证明...
+                        </span>
+                    </button>
+                    
+                    <button @click="quickVerify()" 
+                            :disabled="isLoading"
+                            class="px-6 py-3 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-semibold transition-colors">
+                        ⚡ 快速验证约束
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 结果显示区域 -->
+        <div x-show="result" class="max-w-4xl mx-auto">
+            <div class="bg-white/10 backdrop-blur rounded-xl p-6 border border-white/20">
+                <h3 class="text-xl font-semibold mb-4">📊 测试结果</h3>
+                
+                <!-- 约束验证状态 -->
+                <div class="mb-6 p-4 rounded-lg" 
+                     :class="result?.jsonResult?.is_constraint_mathematically_correct ? 'bg-green-800/30 border border-green-500/50' : 'bg-red-800/30 border border-red-500/50'">
+                    <div class="flex items-center gap-3 mb-2">
+                        <span x-text="result?.jsonResult?.is_constraint_mathematically_correct ? '✅' : '❌'" class="text-2xl"></span>
+                        <span class="font-semibold text-lg">约束验证</span>
+                    </div>
+                    <p x-text="result?.jsonResult?.constraint || '未知约束'" class="text-lg font-mono"></p>
+                    <p x-text="result?.jsonResult?.explanation || '无说明'" class="text-sm opacity-80"></p>
+                </div>
+
+                <!-- zkSNARK证明状态 -->
+                <div x-show="result?.jsonResult?.zksnark_proof_valid !== undefined" class="mb-6 p-4 rounded-lg" 
+                     :class="result?.jsonResult?.verification_passed ? 'bg-green-800/30 border border-green-500/50' : 'bg-red-800/30 border border-red-500/50'">
+                    <div class="flex items-center gap-3 mb-2">
+                        <span x-text="result?.jsonResult?.verification_passed ? '🔒' : '🔓'" class="text-2xl"></span>
+                        <span class="font-semibold text-lg">zkSNARK验证</span>
+                    </div>
+                    <p x-text="result?.jsonResult?.verification_passed ? 'zkSNARK证明验证通过' : 'zkSNARK证明验证失败'" class="text-lg"></p>
+                    <div class="text-sm opacity-80 mt-2">
+                        <span>证明生成: </span>
+                        <span x-text="result?.jsonResult?.zksnark_proof_valid ? '成功' : '失败'" 
+                              :class="result?.jsonResult?.zksnark_proof_valid ? 'text-green-300' : 'text-red-300'"></span>
+                    </div>
+                </div>
+
+                <!-- 性能数据 -->
+                <div x-show="result?.jsonResult?.timing" class="mb-6">
+                    <h4 class="font-semibold mb-3">⏱️ 性能数据</h4>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div class="bg-white/5 p-3 rounded-lg text-center">
+                            <div class="text-2xl font-mono text-blue-400" x-text="result?.jsonResult?.timing?.setup_ms || '0'"></div>
+                            <div class="text-xs text-gray-400">通用设置 (ms)</div>
+                        </div>
+                        <div class="bg-white/5 p-3 rounded-lg text-center">
+                            <div class="text-2xl font-mono text-green-400" x-text="result?.jsonResult?.timing?.index_ms || '0'"></div>
+                            <div class="text-xs text-gray-400">电路索引 (ms)</div>
+                        </div>
+                        <div class="bg-white/5 p-3 rounded-lg text-center">
+                            <div class="text-2xl font-mono text-yellow-400" x-text="result?.jsonResult?.timing?.prove_ms || '0'"></div>
+                            <div class="text-xs text-gray-400">证明生成 (ms)</div>
+                        </div>
+                        <div class="bg-white/5 p-3 rounded-lg text-center">
+                            <div class="text-2xl font-mono text-purple-400" x-text="result?.jsonResult?.timing?.verify_ms || '0'"></div>
+                            <div class="text-xs text-gray-400">证明验证 (ms)</div>
+                        </div>
+                    </div>
+                    <div class="mt-3 text-center">
+                        <span class="text-sm text-gray-400">总耗时: </span>
+                        <span class="font-mono text-lg text-orange-400" x-text="result?.jsonResult?.timing?.total_ms || '0'"></span>
+                        <span class="text-sm text-gray-400"> ms</span>
+                    </div>
+                </div>
+
+                <!-- 详细输出 -->
+                <div class="mb-4">
+                    <button @click="showDetails = !showDetails" 
+                            class="flex items-center gap-2 text-blue-400 hover:text-blue-300 transition-colors">
+                        <span x-text="showDetails ? '🔽' : '▶️'"></span>
+                        <span x-text="showDetails ? '隐藏详细输出' : '显示详细输出'"></span>
+                    </button>
+                </div>
+
+                <div x-show="showDetails" class="bg-black/40 p-4 rounded-lg font-mono text-sm overflow-x-auto">
+                    <pre x-text="result?.output || '无输出'"></pre>
+                </div>
+
+                <!-- Rust验证标记 -->
+                <div class="mt-4 flex justify-center">
+                    <div class="inline-flex items-center px-4 py-2 bg-orange-800/30 text-orange-300 rounded-full text-sm border border-orange-500/50">
+                        <span class="text-lg mr-2">🦀</span>
+                        <span>此结果来自真实的Rust Marlin zkSNARK实现</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 说明区域 -->
+        <div class="max-w-4xl mx-auto mt-8">
+            <div class="bg-white/5 backdrop-blur rounded-xl p-6 border border-white/10">
+                <h3 class="text-xl font-semibold mb-4">🎓 系统说明</h3>
+                <div class="grid md:grid-cols-2 gap-6 text-sm text-gray-300">
+                    <div>
+                        <h4 class="font-semibold text-white mb-2">✅ 正确约束</h4>
+                        <p>当输入的约束数学上正确时（如3×5=15），zkSNARK系统将：</p>
+                        <ul class="list-disc list-inside mt-2 space-y-1">
+                            <li>成功生成密码学证明</li>
+                            <li>验证通过</li>
+                            <li>显示绿色成功状态</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold text-white mb-2">❌ 错误约束</h4>
+                        <p>当输入的约束数学上错误时（如3×5=16），zkSNARK系统将：</p>
+                        <ul class="list-disc list-inside mt-2 space-y-1">
+                            <li>仍能生成证明</li>
+                            <li>但验证会失败</li>
+                            <li>显示红色失败状态</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="mt-6 px-4 py-3 bg-blue-800/20 border border-blue-500/30 rounded-lg">
+                    <p class="text-blue-200 text-sm">
+                        💡 <strong>重要:</strong> 这是一个真实的零知识证明系统！每次测试都运行完整的Marlin协议，包括通用信任设置、电路索引、证明生成和验证。这不是模拟，而是真正的密码学计算。
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function constraintTester() {
+            return {
+                inputs: {
+                    a: 3,
+                    b: 5,
+                    c: 15
+                },
+                result: null,
+                isLoading: false,
+                showDetails: false,
+
+                setConstraint(a, b, c) {
+                    this.inputs = { a, b, c };
+                },
+
+                async runConstraintTest() {
+                    this.isLoading = true;
+                    this.result = null;
+                    this.showDetails = false;
+
+                    try {
+                        const response = await fetch('http://localhost:3000/api/full-demo', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(this.inputs)
+                        });
+
+                        const data = await response.json();
+                        
+                        // 尝试解析嵌套的JSON结果
+                        if (data.output) {
+                            const lines = data.output.split('\n');
+                            for (const line of lines) {
+                                if (line.trim().startsWith('{')) {
+                                    try {
+                                        data.jsonResult = JSON.parse(line.trim());
+                                        break;
+                                    } catch (e) {
+                                        // 继续查找
+                                    }
+                                }
+                            }
+                        }
+                        
+                        this.result = data;
+                        
+                        // 自动显示详细信息如果没有解析到JSON
+                        if (!data.jsonResult) {
+                            this.showDetails = true;
+                        }
+                        
+                    } catch (error) {
+                        console.error('Error:', error);
+                        this.result = {
+                            success: false,
+                            error: error.message
+                        };
+                    } finally {
+                        this.isLoading = false;
+                    }
+                },
+
+                async quickVerify() {
+                    this.isLoading = true;
+                    this.result = null;
+                    this.showDetails = false;
+
+                    try {
+                        const response = await fetch('http://localhost:3000/api/verify-constraint', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(this.inputs)
+                        });
+
+                        const data = await response.json();
+                        
+                        // 尝试解析嵌套的JSON结果
+                        if (data.output) {
+                            const lines = data.output.split('\n');
+                            for (const line of lines) {
+                                if (line.trim().startsWith('{')) {
+                                    try {
+                                        data.jsonResult = JSON.parse(line.trim());
+                                        break;
+                                    } catch (e) {
+                                        // 继续查找
+                                    }
+                                }
+                            }
+                        }
+                        
+                        this.result = data;
+                        
+                    } catch (error) {
+                        console.error('Error:', error);
+                        this.result = {
+                            success: false,
+                            error: error.message
+                        };
+                    } finally {
+                        this.isLoading = false;
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>
