@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Marlin zkSNARK 代码演示</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+    <script src="marlin-simulator.js"></script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .code-block {
+            background: #1e1e1e;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .terminal {
+            background: #1a1a1a;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+        }
+        .loading-bar {
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6, #06b6d4);
+            background-size: 200% 200%;
+            animation: gradient 2s ease infinite;
+        }
+        @keyframes gradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        .slide-in {
+            animation: slideIn 0.5s ease-out;
+        }
+        @keyframes slideIn {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <header class="gradient-bg text-white py-8">
+        <div class="container mx-auto px-4">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-3xl font-bold">Marlin zkSNARK 代码演示</h1>
+                    <p class="opacity-90">实时模拟和代码展示</p>
+                </div>
+                <a href="visualization.html" class="bg-white/20 px-4 py-2 rounded-lg backdrop-blur-sm hover:bg-white/30 transition">
+                    <i class="fas fa-chart-bar mr-2"></i>可视化展示
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-8" x-data="marlinCodeDemo()">
+        
+        <!-- Control Panel -->
+        <section class="mb-8">
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-2xl font-bold text-gray-800 mb-4">模拟控制台</h2>
+                <div class="grid md:grid-cols-3 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">约束数量</label>
+                        <input type="number" x-model="constraints" min="10" max="10000" 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">变量数量</label>
+                        <input type="number" x-model="variables" min="5" max="5000"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div class="flex items-end">
+                        <button @click="runFullDemo()" :disabled="isRunning"
+                                class="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                            <span x-show="!isRunning">运行完整演示</span>
+                            <span x-show="isRunning" class="flex items-center justify-center">
+                                <i class="fas fa-spinner fa-spin mr-2"></i>运行中...
+                            </span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Demo Steps -->
+        <div class="space-y-8">
+            
+            <!-- Step 1: Universal Setup -->
+            <section class="bg-white rounded-lg shadow-lg overflow-hidden" :class="{'slide-in': currentStep >= 1}">
+                <div class="bg-blue-600 text-white px-6 py-4">
+                    <h3 class="text-xl font-bold flex items-center">
+                        <i class="fas fa-cogs mr-3"></i>
+                        步骤 1: 通用设置 (Universal Setup)
+                        <span x-show="currentStep >= 1" class="ml-auto">
+                            <i class="fas fa-check-circle text-green-300"></i>
+                        </span>
+                    </h3>
+                </div>
+                <div class="p-6">
+                    <div class="grid lg:grid-cols-2 gap-6">
+                        <div>
+                            <h4 class="font-semibold text-gray-800 mb-3">Rust 代码示例</h4>
+                            <div class="code-block">
+                                <pre><code class="language-rust">use ark_marlin::Marlin;
+use ark_bls12_381::{Bls12_381, Fr};
+use ark_poly_commit::marlin_pc::MarlinKZG10;
+
+type MarlinInst = Marlin&lt;Fr, MarlinKZG10&lt;Bls12_381, DensePolynomial&lt;Fr&gt;&gt;, Blake2s&gt;;
+
+// 通用设置
+let rng = &mut ark_std::test_rng();
+let universal_srs = MarlinInst::universal_setup(
+    constraints,  // 约束数量
+    variables,    // 变量数量 
+    non_zero,     // 非零元素数量
+    rng
+)?;</code></pre>
+                            </div>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800 mb-3">执行结果</h4>
+                            <div x-show="universalSRS" class="terminal p-4 rounded-lg text-sm">
+                                <div class="text-yellow-400">✓ Universal SRS 生成完成</div>
+                                <div class="mt-2">
+                                    <span class="text-cyan-400">max_degree:</span> 
+                                    <span x-text="universalSRS?.maxDegree"></span>
+                                </div>
+                                <div>
+                                    <span class="text-cyan-400">parameters:</span> 
+                                    <span class="font-mono text-xs" x-text="universalSRS?.parameters?.substring(0, 20) + '...'"></span>
+                                </div>
+                                <div>
+                                    <span class="text-cyan-400">timestamp:</span> 
+                                    <span x-text="universalSRS?.timestamp"></span>
+                                </div>
+                            </div>
+                            <div x-show="currentStep >= 1 && !universalSRS" class="flex items-center justify-center py-8">
+                                <div class="loading-bar h-2 w-full rounded"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Step 2: Index Generation -->
+            <section class="bg-white rounded-lg shadow-lg overflow-hidden" :class="{'slide-in': currentStep >= 2}" x-show="currentStep >= 2">
+                <div class="bg-purple-600 text-white px-6 py-4">
+                    <h3 class="text-xl font-bold flex items-center">
+                        <i class="fas fa-database mr-3"></i>
+                        步骤 2: 电路索引 (Circuit Indexing)
+                        <span x-show="currentStep >= 2" class="ml-auto">
+                            <i class="fas fa-check-circle text-green-300"></i>
+                        </span>
+                    </h3>
+                </div>
+                <div class="p-6">
+                    <div class="grid lg:grid-cols-2 gap-6">
+                        <div>
+                            <h4 class="font-semibold text-gray-800 mb-3">Rust 代码示例</h4>
+                            <div class="code-block">
+                                <pre><code class="language-rust">// 定义约束系统
+#[derive(Clone)]
+struct ExampleCircuit&lt;F: Field&gt; {
+    pub a: Option&lt;F&gt;,
+    pub b: Option&lt;F&gt;,
+}
+
+impl&lt;F: Field&gt; ConstraintSynthesizer&lt;F&gt; for ExampleCircuit&lt;F&gt; {
+    fn generate_constraints(
+        self,
+        cs: ConstraintSystemRef&lt;F&gt;,
+    ) -> Result&lt;(), SynthesisError&gt; {
+        let a = cs.new_witness_variable(|| self.a.ok_or(SynthesisError::AssignmentMissing))?;
+        let b = cs.new_witness_variable(|| self.b.ok_or(SynthesisError::AssignmentMissing))?;
+        let c = cs.new_input_variable(|| {
+            let a = self.a.ok_or(SynthesisError::AssignmentMissing)?;
+            let b = self.b.ok_or(SynthesisError::AssignmentMissing)?;
+            Ok(a * b)
+        })?;
+        
+        cs.enforce_constraint(lc!() + a, lc!() + b, lc!() + c)?;
+        Ok(())
+    }
+}
+
+// 生成索引
+let circuit = ExampleCircuit { a: None, b: None };
+let (index_pk, index_vk) = MarlinInst::index(&universal_srs, circuit)?;</code></pre>
+                            </div>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800 mb-3">索引信息</h4>
+                            <div x-show="indexKeys" class="terminal p-4 rounded-lg text-sm">
+                                <div class="text-yellow-400">✓ 索引密钥生成完成</div>
+                                <div class="mt-2">
+                                    <span class="text-cyan-400">约束数量:</span> 
+                                    <span x-text="indexKeys?.verifierKey?.indexInfo?.numConstraints"></span>
+                                </div>
+                                <div>
+                                    <span class="text-cyan-400">变量数量:</span> 
+                                    <span x-text="indexKeys?.verifierKey?.indexInfo?.numVariables"></span>
+                                </div>
+                                <div>
+                                    <span class="text-cyan-400">非零元素:</span> 
+                                    <span x-text="indexKeys?.verifierKey?.indexInfo?.numNonZero"></span>
+                                </div>
+                                <div class="mt-2 text-green-400">
+                                    <div>• IndexProverKey 生成</div>
+                                    <div>• IndexVerifierKey 生成</div>
+                                    <div>• 索引多项式承诺完成</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Step 3: Proof Generation -->
+            <section class="bg-white rounded-lg shadow-lg overflow-hidden" :class="{'slide-in': currentStep >= 3}" x-show="currentStep >= 3">
+                <div class="bg-green-600 text-white px-6 py-4">
+                    <h3 class="text-xl font-bold flex items-center">
+                        <i class="fas fa-key mr-3"></i>
+                        步骤 3: 证明生成 (Proof Generation)
+                        <span x-show="proof" class="ml-auto">
+                            <i class="fas fa-check-circle text-green-300"></i>
+                        </span>
+                    </h3>
+                </div>
+                <div class="p-6">
+                    <div class="grid lg:grid-cols-2 gap-6">
+                        <div>
+                            <h4 class="font-semibold text-gray-800 mb-3">Rust 代码示例</h4>
+                            <div class="code-block">
+                                <pre><code class="language-rust">// 创建具体的约束实例
+let a = Fr::from(3u64);
+let b = Fr::from(5u64);
+let c = a * b;  // c = 15
+
+let circuit = ExampleCircuit {
+    a: Some(a),
+    b: Some(b),
+};
+
+// 生成证明
+let rng = &mut ark_std::test_rng();
+let proof = MarlinInst::prove(&index_pk, circuit, rng)?;
+
+// 证明包含：
+// - 多项式承诺 (commitments)
+// - 求值结果 (evaluations) 
+// - 证明者消息 (prover_messages)
+// - PC 证明 (pc_proof)</code></pre>
+                            </div>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800 mb-3">证明结构</h4>
+                            <div x-show="proof" class="terminal p-4 rounded-lg text-sm max-h-96 overflow-y-auto">
+                                <div class="text-yellow-400">✓ zkSNARK 证明生成完成</div>
+                                <div class="mt-2">
+                                    <div class="text-cyan-400">承诺轮次:</div>
+                                    <template x-for="(round, index) in proof?.commitments || []" :key="index">
+                                        <div class="ml-4 text-gray-300">
+                                            <span>Round </span><span x-text="index + 1"></span>: 
+                                            <span x-text="round.length"></span> 个承诺
+                                        </div>
+                                    </template>
+                                </div>
+                                <div class="mt-2">
+                                    <span class="text-cyan-400">求值数量:</span> 
+                                    <span x-text="proof?.evaluations?.length"></span>
+                                </div>
+                                <div>
+                                    <span class="text-cyan-400">证明大小:</span> 
+                                    <span x-text="proof?.size"></span> bytes
+                                </div>
+                                <div class="mt-2 text-green-400">
+                                    <div>• 第一轮: w, z_a, z_b, mask_poly 承诺</div>
+                                    <div>• 第二轮: t, g_1, h_1 承诺</div>
+                                    <div>• 第三轮: g_2, h_2 承诺</div>
+                                    <div>• Fiat-Shamir 变换完成</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Step 4: Verification -->
+            <section class="bg-white rounded-lg shadow-lg overflow-hidden" :class="{'slide-in': currentStep >= 4}" x-show="currentStep >= 4">
+                <div class="bg-cyan-600 text-white px-6 py-4">
+                    <h3 class="text-xl font-bold flex items-center">
+                        <i class="fas fa-check-circle mr-3"></i>
+                        步骤 4: 证明验证 (Proof Verification)
+                        <span x-show="verificationResult" class="ml-auto">
+                            <i class="fas fa-check-circle text-green-300"></i>
+                        </span>
+                    </h3>
+                </div>
+                <div class="p-6">
+                    <div class="grid lg:grid-cols-2 gap-6">
+                        <div>
+                            <h4 class="font-semibold text-gray-800 mb-3">Rust 代码示例</h4>
+                            <div class="code-block">
+                                <pre><code class="language-rust">// 验证证明
+let public_input = vec![c];  // 公开输入: c = 15
+let rng = &mut ark_std::test_rng();
+
+let is_valid = MarlinInst::verify(
+    &index_vk,
+    &public_input,
+    &proof,
+    rng
+)?;
+
+println!("Proof verification: {}", is_valid);
+
+// 验证过程包括：
+// 1. 重建 Fiat-Shamir 挑战
+// 2. 检查线性组合
+// 3. 验证多项式承诺
+// 4. 确认 sumcheck 协议</code></pre>
+                            </div>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800 mb-3">验证结果</h4>
+                            <div x-show="verificationResult" class="terminal p-4 rounded-lg text-sm">
+                                <div :class="verificationResult?.isValid ? 'text-green-400' : 'text-red-400'">
+                                    <span x-text="verificationResult?.isValid ? '✓ 证明验证成功' : '✗ 证明验证失败'"></span>
+                                </div>
+                                <div class="mt-2" x-show="verificationResult?.isValid">
+                                    <span class="text-cyan-400">验证时间:</span> 
+                                    <span x-text="verificationResult?.verificationTime"></span> ms
+                                </div>
+                                <div class="mt-2 text-gray-300">
+                                    <div class="text-cyan-400">执行的检查:</div>
+                                    <template x-for="check in verificationResult?.checksPerformed || []" :key="check">
+                                        <div class="ml-4 text-green-400">
+                                            ✓ <span x-text="check"></span>
+                                        </div>
+                                    </template>
+                                </div>
+                                <div class="mt-3 p-3 bg-green-900/30 rounded border border-green-600">
+                                    <div class="text-green-400 font-semibold">🎉 零知识证明完成！</div>
+                                    <div class="text-sm text-gray-300 mt-1">
+                                        证明者成功证明了知道满足约束 a × b = c 的私密值 a 和 b，
+                                        而验证者无需了解 a 和 b 的具体值。
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+
+        <!-- Performance Analysis -->
+        <section class="mt-12 bg-white rounded-lg shadow-lg p-6" x-show="verificationResult">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">性能分析</h2>
+            <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div class="text-center p-4 bg-blue-50 rounded-lg">
+                    <div class="text-2xl font-bold text-blue-600">O(n)</div>
+                    <div class="text-sm text-gray-600">证明生成时间</div>
+                    <div class="text-xs text-gray-500 mt-1">线性于约束数量</div>
+                </div>
+                <div class="text-center p-4 bg-green-50 rounded-lg">
+                    <div class="text-2xl font-bold text-green-600">O(log n)</div>
+                    <div class="text-sm text-gray-600">验证时间</div>
+                    <div class="text-xs text-gray-500 mt-1">对数级验证复杂度</div>
+                </div>
+                <div class="text-center p-4 bg-purple-50 rounded-lg">
+                    <div class="text-2xl font-bold text-purple-600" x-text="proof?.size || 0"></div>
+                    <div class="text-sm text-gray-600">证明大小 (bytes)</div>
+                    <div class="text-xs text-gray-500 mt-1">紧凑的证明尺寸</div>
+                </div>
+                <div class="text-center p-4 bg-cyan-50 rounded-lg">
+                    <div class="text-2xl font-bold text-cyan-600">128-bit</div>
+                    <div class="text-sm text-gray-600">安全级别</div>
+                    <div class="text-xs text-gray-500 mt-1">密码学安全保证</div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        function marlinCodeDemo() {
+            return {
+                constraints: 100,
+                variables: 50,
+                currentStep: 0,
+                isRunning: false,
+                simulator: new MarlinSimulator(),
+                universalSRS: null,
+                indexKeys: null,
+                proof: null,
+                verificationResult: null,
+
+                async runFullDemo() {
+                    if (this.isRunning) return;
+                    
+                    this.isRunning = true;
+                    this.currentStep = 0;
+                    this.simulator.reset();
+                    
+                    try {
+                        // Step 1: Universal Setup
+                        this.currentStep = 1;
+                        this.simulator.currentConstraints = parseInt(this.constraints);
+                        this.simulator.currentVariables = parseInt(this.variables);
+                        
+                        this.universalSRS = await this.simulator.simulateUniversalSetup(
+                            this.constraints, 
+                            this.variables, 
+                            Math.floor(this.constraints * 0.7)
+                        );
+                        
+                        await this.delay(1000);
+                        
+                        // Step 2: Index Generation
+                        this.currentStep = 2;
+                        this.indexKeys = await this.simulator.simulateIndexGeneration(
+                            "Example Circuit: a × b = c"
+                        );
+                        
+                        await this.delay(1000);
+                        
+                        // Step 3: Proof Generation
+                        this.currentStep = 3;
+                        this.proof = await this.simulator.simulateProofGeneration(
+                            { a: 3, b: 5 },
+                            { c: 15 }
+                        );
+                        
+                        await this.delay(1000);
+                        
+                        // Step 4: Verification
+                        this.currentStep = 4;
+                        this.verificationResult = await this.simulator.simulateVerification(
+                            this.proof,
+                            { c: 15 }
+                        );
+                        
+                    } catch (error) {
+                        console.error('Demo error:', error);
+                    } finally {
+                        this.isRunning = false;
+                    }
+                },
+
+                delay(ms) {
+                    return new Promise(resolve => setTimeout(resolve, ms));
+                }
+            }
+        }
+    </script>
+</body>
+</html>

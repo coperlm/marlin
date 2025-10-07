@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Marlin zkSNARK 可视化展示</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        .protocol-flow {
+            background: linear-gradient(90deg, #3b82f6 0%, #8b5cf6 50%, #06b6d4 100%);
+            background-size: 200% 200%;
+            animation: gradient 3s ease infinite;
+        }
+        @keyframes gradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        .pulse-animation {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        .typing-animation {
+            overflow: hidden;
+            border-right: 2px solid #3b82f6;
+            white-space: nowrap;
+            animation: typing 3.5s steps(40, end), blink-caret 0.75s step-end infinite;
+        }
+        @keyframes typing {
+            from { width: 0; }
+            to { width: 100%; }
+        }
+        @keyframes blink-caret {
+            from, to { border-color: transparent; }
+            50% { border-color: #3b82f6; }
+        }
+        .flow-arrow {
+            position: relative;
+        }
+        .flow-arrow::after {
+            content: '';
+            position: absolute;
+            right: -20px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 0;
+            height: 0;
+            border-left: 10px solid #3b82f6;
+            border-top: 5px solid transparent;
+            border-bottom: 5px solid transparent;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <header class="gradient-bg text-white py-16">
+        <div class="container mx-auto px-4 text-center">
+            <h1 class="text-5xl font-bold mb-4 typing-animation">Marlin zkSNARK</h1>
+            <p class="text-xl opacity-90 mb-8">基于 Arkworks 的预处理零知识证明系统</p>
+            <div class="flex justify-center space-x-6 text-sm">
+                <div class="bg-white/20 px-4 py-2 rounded-full backdrop-blur-sm">
+                    <i class="fas fa-shield-alt mr-2"></i>零知识
+                </div>
+                <div class="bg-white/20 px-4 py-2 rounded-full backdrop-blur-sm">
+                    <i class="fas fa-tachometer-alt mr-2"></i>高效验证
+                </div>
+                <div class="bg-white/20 px-4 py-2 rounded-full backdrop-blur-sm">
+                    <i class="fas fa-code mr-2"></i>Rust 实现
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-12" x-data="marlinDemo()">
+        
+        <!-- Protocol Overview -->
+        <section class="mb-16">
+            <h2 class="text-3xl font-bold text-gray-800 mb-8 text-center">协议架构概览</h2>
+            <div class="grid md:grid-cols-3 gap-8">
+                <!-- Universal Setup -->
+                <div class="bg-white rounded-lg shadow-lg p-6 card-hover transition-all duration-300">
+                    <div class="text-center mb-4">
+                        <div class="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
+                            <i class="fas fa-cogs text-blue-600 text-2xl"></i>
+                        </div>
+                        <h3 class="text-xl font-semibold text-gray-800">通用设置</h3>
+                    </div>
+                    <ul class="text-gray-600 space-y-2">
+                        <li><i class="fas fa-check text-green-500 mr-2"></i>生成 Universal SRS</li>
+                        <li><i class="fas fa-check text-green-500 mr-2"></i>多项式承诺方案</li>
+                        <li><i class="fas fa-check text-green-500 mr-2"></i>支持任意电路</li>
+                    </ul>
+                </div>
+
+                <!-- Index Generation -->
+                <div class="bg-white rounded-lg shadow-lg p-6 card-hover transition-all duration-300">
+                    <div class="text-center mb-4">
+                        <div class="inline-flex items-center justify-center w-16 h-16 bg-purple-100 rounded-full mb-4">
+                            <i class="fas fa-database text-purple-600 text-2xl"></i>
+                        </div>
+                        <h3 class="text-xl font-semibold text-gray-800">电路索引</h3>
+                    </div>
+                    <ul class="text-gray-600 space-y-2">
+                        <li><i class="fas fa-check text-green-500 mr-2"></i>R1CS 矩阵生成</li>
+                        <li><i class="fas fa-check text-green-500 mr-2"></i>索引多项式构造</li>
+                        <li><i class="fas fa-check text-green-500 mr-2"></i>验证密钥生成</li>
+                    </ul>
+                </div>
+
+                <!-- Proof System -->
+                <div class="bg-white rounded-lg shadow-lg p-6 card-hover transition-all duration-300">
+                    <div class="text-center mb-4">
+                        <div class="inline-flex items-center justify-center w-16 h-16 bg-cyan-100 rounded-full mb-4">
+                            <i class="fas fa-certificate text-cyan-600 text-2xl"></i>
+                        </div>
+                        <h3 class="text-xl font-semibold text-gray-800">证明系统</h3>
+                    </div>
+                    <ul class="text-gray-600 space-y-2">
+                        <li><i class="fas fa-check text-green-500 mr-2"></i>AHP 协议</li>
+                        <li><i class="fas fa-check text-green-500 mr-2"></i>Fiat-Shamir 变换</li>
+                        <li><i class="fas fa-check text-green-500 mr-2"></i>多轮交互优化</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Interactive Demo -->
+        <section class="mb-16" x-show="!demoCompleted">
+            <h2 class="text-3xl font-bold text-gray-800 mb-8 text-center">交互式演示</h2>
+            
+            <!-- Step Indicator -->
+            <div class="flex justify-center mb-8">
+                <div class="flex space-x-4">
+                    <template x-for="(step, index) in steps" :key="index">
+                        <div class="flex items-center">
+                            <div class="flex items-center justify-center w-10 h-10 rounded-full"
+                                 :class="currentStep >= index ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-600'">
+                                <span x-text="index + 1"></span>
+                            </div>
+                            <div x-show="index < steps.length - 1" class="w-16 h-0.5 bg-gray-300 mx-2"></div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <!-- Current Step Display -->
+            <div class="bg-white rounded-lg shadow-lg p-8 max-w-4xl mx-auto">
+                <template x-for="(step, index) in steps" :key="index">
+                    <div x-show="currentStep === index" class="text-center">
+                        <div class="mb-6">
+                            <div class="inline-flex items-center justify-center w-20 h-20 rounded-full mb-4"
+                                 :class="step.color">
+                                <i :class="step.icon + ' text-3xl'"></i>
+                            </div>
+                            <h3 class="text-2xl font-bold text-gray-800 mb-4" x-text="step.title"></h3>
+                            <p class="text-gray-600 mb-6" x-text="step.description"></p>
+                        </div>
+
+                        <!-- Step Content -->
+                        <div class="grid md:grid-cols-2 gap-6 mb-8">
+                            <div class="bg-gray-50 rounded-lg p-4">
+                                <h4 class="font-semibold text-gray-800 mb-2">输入</h4>
+                                <div class="text-sm text-gray-600" x-html="step.input"></div>
+                            </div>
+                            <div class="bg-gray-50 rounded-lg p-4">
+                                <h4 class="font-semibold text-gray-800 mb-2">输出</h4>
+                                <div class="text-sm text-gray-600" x-html="step.output"></div>
+                            </div>
+                        </div>
+
+                        <!-- Progress Bar -->
+                        <div class="mb-6">
+                            <div class="w-full bg-gray-200 rounded-full h-2">
+                                <div class="protocol-flow h-2 rounded-full transition-all duration-1000"
+                                     :style="`width: ${((currentStep + 1) / steps.length) * 100}%`"></div>
+                            </div>
+                        </div>
+
+                        <!-- Navigation -->
+                        <div class="flex justify-between">
+                            <button @click="previousStep()" 
+                                    :disabled="currentStep === 0"
+                                    class="px-6 py-2 bg-gray-300 text-gray-700 rounded-lg disabled:opacity-50">
+                                上一步
+                            </button>
+                            <button @click="nextStep()" 
+                                    :disabled="currentStep === steps.length - 1"
+                                    class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                                <span x-text="currentStep === steps.length - 1 ? '完成' : '下一步'"></span>
+                            </button>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </section>
+
+        <!-- Technical Details -->
+        <section class="mb-16">
+            <h2 class="text-3xl font-bold text-gray-800 mb-8 text-center">技术细节</h2>
+            <div class="grid lg:grid-cols-2 gap-8">
+                
+                <!-- AHP Components -->
+                <div class="bg-white rounded-lg shadow-lg p-6">
+                    <h3 class="text-xl font-semibold text-gray-800 mb-4">
+                        <i class="fas fa-puzzle-piece text-blue-600 mr-2"></i>
+                        AHP 组件
+                    </h3>
+                    <div class="space-y-4">
+                        <div class="border-l-4 border-blue-500 pl-4">
+                            <h4 class="font-semibold text-gray-800">索引器 (Indexer)</h4>
+                            <p class="text-gray-600 text-sm">处理 R1CS 约束系统，生成索引多项式</p>
+                            <div class="text-xs text-gray-500 mt-1">
+                                多项式: row, col, a_val, b_val, c_val, row_col
+                            </div>
+                        </div>
+                        <div class="border-l-4 border-purple-500 pl-4">
+                            <h4 class="font-semibold text-gray-800">证明者 (Prover)</h4>
+                            <p class="text-gray-600 text-sm">执行三轮交互协议，生成零知识证明</p>
+                            <div class="text-xs text-gray-500 mt-1">
+                                多项式: w, z_a, z_b, mask_poly, t, g_1, h_1, g_2, h_2
+                            </div>
+                        </div>
+                        <div class="border-l-4 border-cyan-500 pl-4">
+                            <h4 class="font-semibold text-gray-800">验证者 (Verifier)</h4>
+                            <p class="text-gray-600 text-sm">验证证明的正确性，支持高效验证</p>
+                            <div class="text-xs text-gray-500 mt-1">
+                                检查线性组合和多项式承诺
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Data Structures -->
+                <div class="bg-white rounded-lg shadow-lg p-6">
+                    <h3 class="text-xl font-semibold text-gray-800 mb-4">
+                        <i class="fas fa-cube text-purple-600 mr-2"></i>
+                        核心数据结构
+                    </h3>
+                    <div class="space-y-4">
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            <h4 class="font-semibold text-gray-800 mb-2">UniversalSRS</h4>
+                            <p class="text-gray-600 text-sm">通用结构化参考字符串，支持多项式承诺</p>
+                        </div>
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            <h4 class="font-semibold text-gray-800 mb-2">IndexVerifierKey</h4>
+                            <p class="text-gray-600 text-sm">包含索引信息和承诺的验证密钥</p>
+                        </div>
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            <h4 class="font-semibold text-gray-800 mb-2">Proof</h4>
+                            <p class="text-gray-600 text-sm">包含承诺、求值和证明者消息的完整证明</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Performance Stats -->
+        <section class="mb-16">
+            <h2 class="text-3xl font-bold text-gray-800 mb-8 text-center">性能特征</h2>
+            <div class="grid md:grid-cols-4 gap-6">
+                <div class="bg-white rounded-lg shadow-lg p-6 text-center">
+                    <div class="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
+                        <i class="fas fa-clock text-green-600 text-2xl"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-green-600">O(log n)</h3>
+                    <p class="text-gray-600">验证时间复杂度</p>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow-lg p-6 text-center">
+                    <div class="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
+                        <i class="fas fa-memory text-blue-600 text-2xl"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-blue-600">O(√n)</h3>
+                    <p class="text-gray-600">证明大小</p>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow-lg p-6 text-center">
+                    <div class="inline-flex items-center justify-center w-16 h-16 bg-purple-100 rounded-full mb-4">
+                        <i class="fas fa-bolt text-purple-600 text-2xl"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-purple-600">O(n)</h3>
+                    <p class="text-gray-600">证明生成时间</p>
+                </div>
+                
+                <div class="bg-white rounded-lg shadow-lg p-6 text-center">
+                    <div class="inline-flex items-center justify-center w-16 h-16 bg-cyan-100 rounded-full mb-4">
+                        <i class="fas fa-shield-alt text-cyan-600 text-2xl"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-cyan-600">128-bit</h3>
+                    <p class="text-gray-600">安全级别</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Code Structure -->
+        <section class="mb-16">
+            <h2 class="text-3xl font-bold text-gray-800 mb-8 text-center">代码结构</h2>
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <div class="grid md:grid-cols-2 gap-8">
+                    <div>
+                        <h3 class="text-xl font-semibold text-gray-800 mb-4">
+                            <i class="fas fa-folder text-yellow-600 mr-2"></i>
+                            核心模块
+                        </h3>
+                        <div class="space-y-3">
+                            <div class="flex items-center p-3 bg-gray-50 rounded-lg">
+                                <i class="fas fa-file-code text-blue-600 mr-3"></i>
+                                <div>
+                                    <div class="font-semibold">lib.rs</div>
+                                    <div class="text-sm text-gray-600">主要的 Marlin 协议实现</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center p-3 bg-gray-50 rounded-lg">
+                                <i class="fas fa-file-code text-purple-600 mr-3"></i>
+                                <div>
+                                    <div class="font-semibold">ahp/</div>
+                                    <div class="text-sm text-gray-600">代数全息证明模块</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center p-3 bg-gray-50 rounded-lg">
+                                <i class="fas fa-file-code text-green-600 mr-3"></i>
+                                <div>
+                                    <div class="font-semibold">data_structures.rs</div>
+                                    <div class="text-sm text-gray-600">核心数据结构定义</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h3 class="text-xl font-semibold text-gray-800 mb-4">
+                            <i class="fas fa-cogs text-cyan-600 mr-2"></i>
+                            依赖库
+                        </h3>
+                        <div class="space-y-3">
+                            <div class="flex items-center p-3 bg-gray-50 rounded-lg">
+                                <i class="fas fa-cube text-red-600 mr-3"></i>
+                                <div>
+                                    <div class="font-semibold">ark-poly-commit</div>
+                                    <div class="text-sm text-gray-600">多项式承诺方案</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center p-3 bg-gray-50 rounded-lg">
+                                <i class="fas fa-cube text-orange-600 mr-3"></i>
+                                <div>
+                                    <div class="font-semibold">ark-relations</div>
+                                    <div class="text-sm text-gray-600">R1CS 约束系统</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center p-3 bg-gray-50 rounded-lg">
+                                <i class="fas fa-cube text-indigo-600 mr-3"></i>
+                                <div>
+                                    <div class="font-semibold">ark-ff</div>
+                                    <div class="text-sm text-gray-600">有限域运算</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white py-8">
+        <div class="container mx-auto px-4 text-center">
+            <p class="mb-4">基于 Arkworks 生态系统构建的 Marlin zkSNARK 实现</p>
+            <div class="flex justify-center space-x-6">
+                <a href="https://github.com/arkworks-rs/marlin" class="text-gray-400 hover:text-white">
+                    <i class="fab fa-github text-xl"></i>
+                </a>
+                <a href="https://eprint.iacr.org/2019/1047" class="text-gray-400 hover:text-white">
+                    <i class="fas fa-file-alt text-xl"></i>
+                </a>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        function marlinDemo() {
+            return {
+                currentStep: 0,
+                demoCompleted: false,
+                steps: [
+                    {
+                        title: "通用设置阶段",
+                        description: "生成支持任意电路的通用结构化参考字符串 (Universal SRS)",
+                        icon: "fas fa-cogs text-white",
+                        color: "bg-blue-500",
+                        input: `
+                            <div class="font-mono text-xs">
+                                <div>• num_constraints: 约束数量</div>
+                                <div>• num_variables: 变量数量</div>
+                                <div>• num_non_zero: 非零元素数量</div>
+                                <div>• rng: 随机数生成器</div>
+                            </div>
+                        `,
+                        output: `
+                            <div class="font-mono text-xs">
+                                <div>• UniversalSRS&lt;F, PC&gt;</div>
+                                <div>• 多项式承诺方案参数</div>
+                                <div>• 支持最大度数: max_degree</div>
+                            </div>
+                        `
+                    },
+                    {
+                        title: "电路索引阶段",
+                        description: "将约束系统转换为多项式表示，生成索引密钥对",
+                        icon: "fas fa-database text-white",
+                        color: "bg-purple-500",
+                        input: `
+                            <div class="font-mono text-xs">
+                                <div>• UniversalSRS</div>
+                                <div>• ConstraintSynthesizer</div>
+                                <div>• R1CS 约束系统</div>
+                            </div>
+                        `,
+                        output: `
+                            <div class="font-mono text-xs">
+                                <div>• IndexProverKey</div>
+                                <div>• IndexVerifierKey</div>
+                                <div>• 索引多项式承诺</div>
+                            </div>
+                        `
+                    },
+                    {
+                        title: "证明生成阶段",
+                        description: "证明者执行三轮 AHP 协议，生成零知识证明",
+                        icon: "fas fa-key text-white",
+                        color: "bg-green-500",
+                        input: `
+                            <div class="font-mono text-xs">
+                                <div>• IndexProverKey</div>
+                                <div>• 私有见证 (witness)</div>
+                                <div>• 公开输入</div>
+                                <div>• 随机性</div>
+                            </div>
+                        `,
+                        output: `
+                            <div class="font-mono text-xs">
+                                <div>• Proof&lt;F, PC&gt;</div>
+                                <div>• 多项式承诺</div>
+                                <div>• 求值结果</div>
+                                <div>• PC 证明</div>
+                            </div>
+                        `
+                    },
+                    {
+                        title: "证明验证阶段",
+                        description: "验证者高效验证证明的正确性，无需重新计算",
+                        icon: "fas fa-check-circle text-white",
+                        color: "bg-cyan-500",
+                        input: `
+                            <div class="font-mono text-xs">
+                                <div>• IndexVerifierKey</div>
+                                <div>• 公开输入</div>
+                                <div>• Proof</div>
+                                <div>• 随机性</div>
+                            </div>
+                        `,
+                        output: `
+                            <div class="font-mono text-xs">
+                                <div>• bool: 验证结果</div>
+                                <div>• O(log n) 验证时间</div>
+                                <div>• 安全性保证</div>
+                            </div>
+                        `
+                    }
+                ],
+                
+                nextStep() {
+                    if (this.currentStep < this.steps.length - 1) {
+                        this.currentStep++;
+                    } else {
+                        this.demoCompleted = true;
+                    }
+                },
+                
+                previousStep() {
+                    if (this.currentStep > 0) {
+                        this.currentStep--;
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>
